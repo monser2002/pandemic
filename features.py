@@ -1,8 +1,28 @@
 import pandas as pd
 
 
-def employers(df, dropped):
-    df = df.drop(dropped).fillna('')
+def education(df):
+    threshold_education = 0.002
+    count_education_train = df.institution.value_counts(normalize=True)
+    freq_education_train = count_education_train.drop('Школа').loc[count_education_train > threshold_education].mul(
+        100).round(1).astype(str)
+    groupped_education_train = df.loc[:, ['salary', 'institution']].groupby('institution').mean()
+    groupped_education_train['normalized'] = (groupped_education_train - groupped_education_train.min()) / (
+            groupped_education_train.max() - groupped_education_train.min())
+    df['top_institution_by_freq'] = [
+        groupped_education_train['normalized'].loc[x.institution] if x.institution in freq_education_train else 0 for
+        _, x
+        in df.iterrows()]
+    salary_education_train = groupped_education_train['normalized'].sort_values(ascending=False).head(
+        int(len(groupped_education_train['normalized']) * threshold_education))
+    df['top_institution_by_salary'] = [
+        groupped_education_train['normalized'].loc[x.institution] if x.institution in salary_education_train else 0 for
+        _, x
+        in df.iterrows()]
+    return df
+
+
+def employers(df):
     freq_employers = df.employer.value_counts()
     freq_employers = freq_employers.loc[freq_employers > 5].head(100)
     groupped_employer_freq = df.loc[:, ['salary_desired', 'employer']].groupby('employer').mean()
@@ -18,6 +38,7 @@ def employers(df, dropped):
         df.iterrows()]
     return df
 
+
 df_train = pd.read_csv('train.csv', sep=';', dtype='unicode')
 df_test = pd.read_csv('test.csv', sep=';', dtype='unicode')
 train = df_train.loc[:, ['id', 'salary_desired', 'salary']]
@@ -28,41 +49,10 @@ test = df_test.loc[:, ['id', 'salary_desired']]
 test.iloc[:, 0] = [int(x) for x in test.iloc[:, 0]]
 test.iloc[:, 1] = [int(x) for x in test.iloc[:, 1]]
 
-df_education = pd.read_csv('education_mult.csv', sep=';').dropna(subset=['id']).loc[:, ['id', 'institution']]
+df_education = pd.read_csv('education.csv', sep=';')
 df_education.iloc[:, 0] = [int(x) for x in df_education.iloc[:, 0]]
-threshold_education = 0.002
-
-merged_education_train = pd.merge(train, df_education, on='id', how='inner')
-count_education_train = merged_education_train.institution.value_counts(normalize=True)
-freq_education_train = count_education_train.drop('Школа').loc[count_education_train > threshold_education].mul(
-    100).round(1).astype(str)
-groupped_education_train = merged_education_train.loc[:, ['salary', 'institution']].groupby('institution').mean()
-groupped_education_train['normalized'] = (groupped_education_train - groupped_education_train.min()) / (
-        groupped_education_train.max() - groupped_education_train.min())
-merged_education_train['top_institution_by_freq'] = [
-    groupped_education_train['normalized'].loc[x.institution] if x.institution in freq_education_train else 0 for _, x
-    in merged_education_train.iterrows()]
-salary_education_train = groupped_education_train['normalized'].sort_values(ascending=False).head(
-    int(len(groupped_education_train['normalized']) * threshold_education))
-merged_education_train['top_institution_by_salary'] = [
-    groupped_education_train['normalized'].loc[x.institution] if x.institution in salary_education_train else 0 for _, x
-    in merged_education_train.iterrows()]
-
-merged_education_test = pd.merge(test, df_education, on='id', how='inner')
-count_education_test = merged_education_test.institution.value_counts(normalize=True)
-freq_education_test = count_education_test.drop('Школа').loc[count_education_test > threshold_education].mul(100).round(
-    1).astype(str)
-groupped_education_test = merged_education_test.loc[:, ['salary_desired', 'institution']].groupby('institution').mean()
-groupped_education_test['normalized'] = (groupped_education_test - groupped_education_test.min()) / (
-        groupped_education_test.max() - groupped_education_test.min())
-merged_education_test['top_institution_by_freq'] = [
-    groupped_education_test['normalized'].loc[x.institution] if x.institution in freq_education_test else 0 for _, x in
-    merged_education_test.iterrows()]
-salary_education_test = groupped_education_test['normalized'].sort_values(ascending=False).head(
-    int(len(groupped_education_test['normalized']) * threshold_education))
-merged_education_test['top_institution_by_salary'] = [
-    groupped_education_test['normalized'].loc[x.institution] if x.institution in salary_education_test else 0 for _, x
-    in merged_education_test.iterrows()]
+merged_education_train = education(pd.merge(train, df_education, on='id', how='inner'))
+merged_education_test = education(pd.merge(test, df_education, on='id', how='inner'))
 
 df_lemmatized = pd.read_csv('df_lemmatized.csv').drop('Unnamed: 0', axis=1)
 df_lemmatized_train = pd.merge(train, df_lemmatized, on='id', how='left').fillna('[]')
@@ -111,15 +101,11 @@ df_employements = pd.read_csv('employements_mult.csv', sep=';').dropna()
 df_employements.iloc[:, 0] = [int(x) for x in df_employements.iloc[:, 0]]
 
 employers_train = pd.merge(train.loc[:, ['id', 'salary']], df_employements.loc[:, ['id', 'employer']], on='id',
-                           how='left')
+                           how='left').fillna('')
 employers_test = pd.merge(test.loc[:, ['id', 'salary_desired']], df_employements.loc[:, ['id', 'employer']], on='id',
-                          how='left')
-drop_train = pd.DataFrame((train.id - employers_train.id).isna())
-drop_train = drop_train.loc[drop_train.id].index
-drop_test = pd.DataFrame((test.id - employers_test.id).isna())
-drop_test = drop_test.loc[drop_test.id].index
-employers_train = employers(employers_train, drop_train)
-employers_test = employers(employers_test, drop_test)
+                          how='left').fillna('')
+employers_train = employers(employers_train)
+employers_test = employers(employers_test)
 
 main_df_train = pd.merge(merged_education_train,
                          df_lemmatized_train.loc[:, ['id', 'mean_salary_positions', 'mean_salary_skills']], on='id')
