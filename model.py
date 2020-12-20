@@ -7,7 +7,7 @@ import tensorflow as tf
 from imblearn.pipeline import Pipeline
 from sklearn.ensemble import StackingRegressor, GradientBoostingRegressor
 from sklearn.metrics import make_scorer, mean_squared_log_error
-from sklearn.model_selection import RandomizedSearchCV, train_test_split, RepeatedStratifiedKFold
+from sklearn.model_selection import RandomizedSearchCV, RepeatedStratifiedKFold
 from sklearn.preprocessing import LabelEncoder
 from xgboost import XGBRegressor
 
@@ -70,11 +70,6 @@ if __name__ in '__main__':
     X_train_a = train_a_merged.drop(['salary_x', 'salary_y', 'salary_desired_y'], axis=1)
     y_train_a = train_a_merged.salary_x
     X_test_a = test_a_merged.drop(['salary_desired_y'], axis=1)
-    # X_train_a, X_test_a, y_train_a, y_test_a = train_test_split(
-    #     train_a_merged.drop(['salary_x', 'salary_y', 'salary_desired_y'], axis=1), train_a_merged.salary_x,
-    #     test_size=0.25, random_state=seed)
-
-    # tune_model(X_train_a, y_train_a)
     model_xg_a = XGBRegressor(subsample=0.7, reg_lambda=1.1, reg_alpha=1.3, objective='reg:squaredlogerror',
                               max_depth=20, n_estimators=200, min_child_weight=4, learning_rate=0.05,
                               colsample_bytree=0.8)
@@ -106,9 +101,6 @@ if __name__ in '__main__':
     X_train_b = train_b_merged.drop(['salary_x', 'salary_y', 'salary_desired_y'], axis=1)
     y_train_b = train_b_merged.salary_x
     X_test_b = test_b_merged.drop(['salary_desired_y'], axis=1).fillna(0)
-    # X_train_b, X_test_b, y_train_b, y_test_b = train_test_split(
-    #     train_b_merged.drop(['salary_x', 'salary_y', 'salary_desired_y'], axis=1), train_b_merged.salary_x,
-    #     test_size=0.25, random_state=seed)
 
     model_xg_b = XGBRegressor(subsample=0.7, reg_lambda=1.1, reg_alpha=1.3, objective='reg:squaredlogerror',
                               max_depth=20, n_estimators=200, min_child_weight=4, learning_rate=0.05,
@@ -139,9 +131,6 @@ if __name__ in '__main__':
     X_train_c = train_c_merged.drop(['salary_x', 'salary_y', 'salary_desired_y'], axis=1)
     y_train_c = train_c_merged.salary_x
     X_test_c = test_c_merged.drop(['salary_desired_y'], axis=1).fillna(0)
-    # X_train_c, X_test_c, y_train_c, y_test_c = train_test_split(
-    #     train_c_merged.drop(['salary_x', 'salary_y', 'salary_desired_y'], axis=1), train_c_merged.salary_x,
-    #     test_size=0.25, random_state=seed)
     model_xg_c = XGBRegressor(subsample=0.7, reg_lambda=1.1, reg_alpha=1.3, objective='reg:squaredlogerror',
                               max_depth=20, n_estimators=200, min_child_weight=4, learning_rate=0.05,
                               colsample_bytree=0.8)
@@ -171,9 +160,6 @@ if __name__ in '__main__':
     X_train_d = train_d_merged.drop(['salary_x', 'salary_y', 'salary_desired_y'], axis=1)
     y_train_d = train_d_merged.salary_x
     X_test_d = test_d_merged.drop(['salary_desired_y'], axis=1).fillna(0)
-    # X_train_d, X_test_d, y_train_d, y_test_d = train_test_split(
-    #     train_d_merged.drop(['salary_x', 'salary_y', 'salary_desired_y'], axis=1), train_d_merged.salary_x,
-    #     test_size=0.25, random_state=seed)
     model_xg_d = XGBRegressor(subsample=0.7, reg_lambda=1.1, reg_alpha=1.3, objective='reg:squaredlogerror',
                               max_depth=20, n_estimators=200, min_child_weight=4, learning_rate=0.05,
                               colsample_bytree=0.8)
@@ -195,8 +181,6 @@ if __name__ in '__main__':
     preds = pd.concat([predictions_a, predictions_b, predictions_c, predictions_d])
 
     preds.salary = preds.salary.apply(lambda x: 12500 if x < 1000 else x)
-    d = [12500 if x < 1000 else x for x in preds.salary]
     preds.salary = preds.salary.apply(lambda x: 350000 if x > 350000 else x)
-    d1 = [350000 if x > 350000 else x for x in preds.salary]
 
     preds.to_csv('stacking_solution2.csv')
